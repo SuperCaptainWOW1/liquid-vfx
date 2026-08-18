@@ -52,7 +52,6 @@ export default class Controls {
     this.up.setFromMatrixColumn(this.camera.matrixWorld, 1);
     this.toCamera.subVectors(this.camera.position, this.center).normalize();
 
-    this.bottle.liquidBody.geometry.computeBoundingSphere();
     if (!this.bottle.liquidBody.geometry.boundingSphere)
       throw new Error("Failed to get bounding sphere");
     const worldRadius = this.bottle.liquidBody.geometry.boundingSphere.radius;

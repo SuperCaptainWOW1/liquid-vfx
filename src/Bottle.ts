@@ -46,6 +46,7 @@ export default class Bottle {
         uniforms: liquidUniforms,
       }),
     );
+    this.liquidBody.geometry.computeBoundingSphere();
 
     const surfaceGeometry = new PlaneGeometry(4, 4, 32, 32);
     surfaceGeometry.rotateX(-Math.PI / 2);
