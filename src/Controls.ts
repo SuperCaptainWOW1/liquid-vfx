@@ -21,8 +21,8 @@ export default class Controls {
   private centerScreen = new Vector2();
   private screenRadius = 1;
 
-  private startDirection = new Vector3();
-  private startQuaternion = new Quaternion();
+  private prevDirection = new Vector3();
+  private reuseDirection = new Vector3();
   private deltaQuaternion = new Quaternion();
 
   private static readonly WORLD_UP = new Vector3(0, 1, 0);
@@ -62,27 +62,37 @@ export default class Controls {
     );
     this.screenRadius = this.centerScreen.distanceTo(edgeScreen);
 
-    this.startDirection.copy(this.getArcballDirection(e.clientX, e.clientY));
-    this.startQuaternion.copy(this.bottle.liquidBody.quaternion);
+    const direction = this.getArcballDirection(e.clientX, e.clientY);
+    if (!direction) return;
+
+    this.prevDirection.copy(direction);
 
     this.cameraControls.enabled = false;
     this.isPointerDown = true;
   }
 
   private onPointerUp() {
-    this.cameraControls.enabled = true;
     this.isPointerDown = false;
+    this.cameraControls.enabled = true;
   }
 
   private onPointerMove(e: PointerEvent) {
     if (!this.isPointerDown) return;
 
-    const endDirection = this.getArcballDirection(e.clientX, e.clientY);
+    const direction = this.getArcballDirection(e.clientX, e.clientY);
+    if (!direction) {
+      this.isPointerDown = false;
+      return;
+    }
 
-    this.deltaQuaternion.setFromUnitVectors(this.startDirection, endDirection);
+    // Accumulate per-move deltas instead of mapping start→current: the shortest
+    // arc between two directions can never exceed 180°, which capped the drag.
+    this.deltaQuaternion.setFromUnitVectors(this.prevDirection, direction);
     this.bottle.liquidBody.quaternion
-      .copy(this.deltaQuaternion)
-      .multiply(this.startQuaternion);
+      .premultiply(this.deltaQuaternion)
+      .normalize();
+
+    this.prevDirection.copy(direction);
 
     this.updateLevel(this.bottle);
   }
@@ -92,25 +102,18 @@ export default class Controls {
     const px = clientX - rect.left;
     const py = clientY - rect.top;
 
-    let dx = (px - this.centerScreen.x) / this.screenRadius;
-    let dy = (py - this.centerScreen.y) / this.screenRadius;
+    const dx = (px - this.centerScreen.x) / this.screenRadius;
+    const dy = (py - this.centerScreen.y) / this.screenRadius;
 
+    // Outside the ball the arcball has no defined direction; caller ends the drag.
     const lenSq = dx * dx + dy * dy;
-    let dz: number;
+    if (lenSq > 1) return null;
 
-    if (lenSq <= 1) {
-      dz = Math.sqrt(1 - lenSq);
-    } else {
-      const len = Math.sqrt(lenSq);
-      dx /= len;
-      dy /= len;
-      dz = 0;
-    }
-
-    return new Vector3()
+    return this.reuseDirection
+      .set(0, 0, 0)
       .addScaledVector(this.right, dx)
       .addScaledVector(this.up, -dy)
-      .addScaledVector(this.toCamera, dz)
+      .addScaledVector(this.toCamera, Math.sqrt(1 - lenSq))
       .normalize();
   }
 
@@ -131,8 +134,7 @@ export default class Controls {
     const tilt = this.reuseVector3.angleTo(Controls.WORLD_UP);
     const clampedTilt = Math.min(tilt, Math.PI / 2);
 
-    bottle.targetLevel =
-      (1 - clampedTilt / (Math.PI / 2)) * bottle.maxLevel;
+    bottle.targetLevel = (1 - clampedTilt / (Math.PI / 2)) * bottle.maxLevel;
   }
 
   private getNormalizedDeviceCoordinates(x: number, y: number) {
