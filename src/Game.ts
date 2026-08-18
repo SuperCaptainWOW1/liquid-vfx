@@ -3,8 +3,10 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   PlaneGeometry,
+  Quaternion,
   Timer,
   Vector2,
+  Vector3,
   WebGLRenderer,
   type Scene,
 } from "three";
@@ -27,9 +29,10 @@ import Controls from "./Controls";
 // };
 
 export default class Game {
-  private prevRotation = new Vector2();
+  private prevQuaternion = new Quaternion();
+  private deltaQuaternion = new Quaternion();
 
-  private angularVelocity = new Vector2();
+  private angularVelocity = new Vector3();
 
   private levelValue = 0;
   private levelVelocity = 0;
@@ -91,31 +94,39 @@ export default class Game {
   }
 
   private updateWaves(bottle: Bottle, delta: number) {
-    const deltaX = bottle.liquidBody.rotation.x - this.prevRotation.x;
-    const deltaZ = bottle.liquidBody.rotation.z - this.prevRotation.y;
+    // World-space rotation this frame: q = Δ · qPrev  →  Δ = q · qPrev⁻¹
+    this.deltaQuaternion
+      .copy(this.prevQuaternion)
+      .invert()
+      .premultiply(bottle.liquidBody.quaternion);
 
-    this.prevRotation.set(
-      bottle.liquidBody.rotation.x,
-      bottle.liquidBody.rotation.z,
-    );
+    this.prevQuaternion.copy(bottle.liquidBody.quaternion);
 
-    const isMoving = Math.abs(deltaX) > 0.00001 || Math.abs(deltaZ) > 0.00001;
+    // q and -q are the same rotation; force w >= 0 or the sign of the velocity flips
+    const sign = this.deltaQuaternion.w < 0 ? -1 : 1;
+    const { x, y, z } = this.deltaQuaternion;
+
+    // Rotation vector (axis × angle) / delta. Euler deltas would spike by ~π
+    // per frame whenever rotation.y crosses ±π/2.
+    const sinHalf = Math.sqrt(x * x + y * y + z * z);
+    const angle = 2 * Math.atan2(sinHalf, sign * this.deltaQuaternion.w);
+    // angle / sinHalf → 2 as sinHalf → 0
+    const scale = (sign * (sinHalf > 1e-8 ? angle / sinHalf : 2)) / delta;
+
+    const isMoving = angle > 0.00001;
 
     if (isMoving) {
-      this.angularVelocity.set(deltaX / delta, deltaZ / delta);
+      this.angularVelocity.set(x * scale, y * scale, z * scale);
 
       const sensitivity = 0.04;
       const maxWave = 0.3;
 
       this.waveTarget.set(
         clamp(this.angularVelocity.x * sensitivity, -maxWave, maxWave),
-        clamp(this.angularVelocity.y * sensitivity, -maxWave, maxWave),
+        clamp(this.angularVelocity.z * sensitivity, -maxWave, maxWave),
       );
     } else {
-      this.angularVelocity.set(0, 0);
-
-      // Бутылка перестала двигаться →
-      // волны постепенно должны исчезнуть.
+      this.angularVelocity.set(0, 0, 0);
       this.waveTarget.set(0, 0);
     }
 
@@ -142,10 +153,7 @@ export default class Game {
   ) {
     const timer = new Timer();
 
-    this.prevRotation.set(
-      bottle.liquidBody.rotation.x,
-      bottle.liquidBody.rotation.z,
-    );
+    this.prevQuaternion.copy(bottle.liquidBody.quaternion);
 
     this.levelValue = bottle.maxLevel;
 
