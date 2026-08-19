@@ -10,7 +10,6 @@ import type Bottle from "./Bottle";
 
 export default class Controls {
   private raycaster = new Raycaster();
-  private reuseVector3 = new Vector3();
 
   private isPointerDown = false;
 
@@ -25,8 +24,6 @@ export default class Controls {
   private reuseDirection = new Vector3();
   private deltaQuaternion = new Quaternion();
 
-  private static readonly WORLD_UP = new Vector3(0, 1, 0);
-
   constructor(
     private canvas: HTMLCanvasElement,
     private camera: PerspectiveCamera,
@@ -36,6 +33,10 @@ export default class Controls {
     canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     canvas.addEventListener("pointerup", () => this.onPointerUp());
     canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
+  }
+
+  public get isDragging() {
+    return this.isPointerDown;
   }
 
   private onPointerDown(e: PointerEvent) {
@@ -93,8 +94,6 @@ export default class Controls {
       .normalize();
 
     this.prevDirection.copy(direction);
-
-    this.updateLevel(this.bottle);
   }
 
   private getArcballDirection(clientX: number, clientY: number) {
@@ -124,17 +123,6 @@ export default class Controls {
       ((ndc.x + 1) / 2) * rect.width,
       ((1 - ndc.y) / 2) * rect.height,
     );
-  }
-
-  private updateLevel(bottle: Bottle) {
-    this.reuseVector3
-      .set(0, 1, 0)
-      .applyQuaternion(bottle.liquidBody.quaternion);
-
-    const tilt = this.reuseVector3.angleTo(Controls.WORLD_UP);
-    const clampedTilt = Math.min(tilt, Math.PI / 2);
-
-    bottle.targetLevel = (1 - clampedTilt / (Math.PI / 2)) * bottle.maxLevel;
   }
 
   private getNormalizedDeviceCoordinates(x: number, y: number) {

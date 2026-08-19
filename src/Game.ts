@@ -33,12 +33,16 @@ export default class Game {
   private deltaQuaternion = new Quaternion();
 
   private angularVelocity = new Vector3();
+  private reuseVector3 = new Vector3();
 
   private levelValue = 0;
   private levelVelocity = 0;
 
   private waveCoeff = new Vector2();
   private waveTarget = new Vector2();
+
+  private static readonly WORLD_UP = new Vector3(0, 1, 0);
+  private static readonly UPRIGHT = new Quaternion();
 
   constructor(canvas: HTMLCanvasElement) {
     const { renderer, camera, scene } = new Graphics(canvas);
@@ -49,9 +53,9 @@ export default class Game {
 
     const bottle = this.createScene(scene);
 
-    new Controls(canvas, camera, bottle, orbitControls);
+    const controls = new Controls(canvas, camera, bottle, orbitControls);
 
-    this.initRenderLoop(renderer, scene, camera, orbitControls, bottle);
+    this.initRenderLoop(renderer, scene, camera, orbitControls, bottle, controls);
   }
 
   private setupCamera(camera: PerspectiveCamera) {
@@ -144,12 +148,33 @@ export default class Game {
       this.waveCoeff.y;
   }
 
+  private returnToUpright(bottle: Bottle, delta: number) {
+    const rate = 4;
+
+    bottle.liquidBody.quaternion.slerp(
+      Game.UPRIGHT,
+      1 - Math.exp(-rate * delta),
+    );
+  }
+
+  private updateTargetLevel(bottle: Bottle) {
+    this.reuseVector3
+      .set(0, 1, 0)
+      .applyQuaternion(bottle.liquidBody.quaternion);
+
+    const tilt = this.reuseVector3.angleTo(Game.WORLD_UP);
+    const clampedTilt = Math.min(tilt, Math.PI / 2);
+
+    bottle.targetLevel = (1 - clampedTilt / (Math.PI / 2)) * bottle.maxLevel;
+  }
+
   private initRenderLoop(
     renderer: WebGLRenderer,
     scene: Scene,
     camera: PerspectiveCamera,
     cameraControls: OrbitControls,
     bottle: Bottle,
+    controls: Controls,
   ) {
     const timer = new Timer();
 
@@ -163,6 +188,11 @@ export default class Game {
       const delta = Math.min(timer.getDelta(), 0.05);
 
       cameraControls.update(delta);
+
+      if (!controls.isDragging) this.returnToUpright(bottle, delta);
+
+      // Runs after any rotation this frame so the waves pick it up as velocity.
+      this.updateTargetLevel(bottle);
       this.updateWaves(bottle, delta);
       this.updateLevel(bottle, delta);
 
