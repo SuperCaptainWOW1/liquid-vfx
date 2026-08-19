@@ -23,6 +23,7 @@ export default class Bottle {
 
   readonly liquidSurface;
   readonly liquidBody;
+  readonly dragRadius;
 
   targetLevel = this.maxLevel;
 
@@ -46,11 +47,13 @@ export default class Bottle {
   private waveTarget = new Vector2();
 
   constructor() {
-    const { liquidBody, liquidSurface, bottleWorldInverse } = this.init();
+    const { liquidBody, liquidSurface, bottleWorldInverse, dragRadius } =
+      this.init();
 
     this.liquidBody = liquidBody;
     this.liquidSurface = liquidSurface;
     this.bottleWorldInverse = bottleWorldInverse;
+    this.dragRadius = dragRadius;
 
     this.prevQuaternion.copy(liquidBody.quaternion);
     this.levelValue = this.maxLevel;
@@ -99,6 +102,9 @@ export default class Bottle {
       }),
     );
     liquidBody.geometry.computeBoundingSphere();
+    if (!liquidBody.geometry.boundingSphere)
+      throw new Error("Failed to get bounding sphere");
+    const dragRadius = liquidBody.geometry.boundingSphere.radius * 1.3;
 
     const surfaceGeometry = new PlaneGeometry(4, 4, 32, 32);
     surfaceGeometry.rotateX(-Math.PI / 2);
@@ -124,6 +130,7 @@ export default class Bottle {
       liquidBody,
       bottleWorldInverse,
       liquidSurface,
+      dragRadius,
     };
   }
 

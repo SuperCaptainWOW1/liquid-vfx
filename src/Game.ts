@@ -8,14 +8,20 @@ import CameraController from "./CameraController";
 import World from "./World";
 
 export default class Game {
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, dragRing: HTMLElement) {
     const { renderer, camera, scene } = new Graphics(canvas);
 
     const { cameraControls } = new CameraController(camera, canvas);
 
     const { bottle } = new World(scene);
 
-    const controls = new Controls(canvas, camera, bottle, cameraControls);
+    const controls = new Controls(
+      canvas,
+      camera,
+      bottle,
+      cameraControls,
+      dragRing,
+    );
 
     this.initRenderLoop(
       renderer,

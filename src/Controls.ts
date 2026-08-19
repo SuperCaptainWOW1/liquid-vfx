@@ -29,6 +29,7 @@ export default class Controls {
     private camera: PerspectiveCamera,
     private bottle: Bottle,
     private cameraControls: OrbitControls,
+    private dragRing: HTMLElement,
   ) {
     canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     canvas.addEventListener("pointerup", () => this.onPointerUp());
@@ -53,13 +54,9 @@ export default class Controls {
     this.up.setFromMatrixColumn(this.camera.matrixWorld, 1);
     this.toCamera.subVectors(this.camera.position, this.center).normalize();
 
-    if (!this.bottle.liquidBody.geometry.boundingSphere)
-      throw new Error("Failed to get bounding sphere");
-    const worldRadius = this.bottle.liquidBody.geometry.boundingSphere.radius;
-
     this.centerScreen = this.worldToScreenPx(this.center);
     const edgeScreen = this.worldToScreenPx(
-      this.center.clone().addScaledVector(this.right, worldRadius),
+      this.center.clone().addScaledVector(this.right, this.bottle.dragRadius),
     );
     this.screenRadius = this.centerScreen.distanceTo(edgeScreen);
 
@@ -70,11 +67,15 @@ export default class Controls {
 
     this.cameraControls.enabled = false;
     this.isPointerDown = true;
+
+    this.showDragRing();
   }
 
   private onPointerUp() {
     this.isPointerDown = false;
     this.cameraControls.enabled = true;
+
+    this.hideDragRing();
   }
 
   private onPointerMove(e: PointerEvent) {
@@ -83,6 +84,7 @@ export default class Controls {
     const direction = this.getArcballDirection(e.clientX, e.clientY);
     if (!direction) {
       this.isPointerDown = false;
+      this.hideDragRing();
       return;
     }
 
@@ -94,6 +96,23 @@ export default class Controls {
       .normalize();
 
     this.prevDirection.copy(direction);
+  }
+
+  private showDragRing() {
+    // centerScreen is relative to canvas, the ring is fixed to the viewport.
+    const rect = this.canvas.getBoundingClientRect();
+    const { style } = this.dragRing;
+    const size = this.screenRadius * 2;
+
+    style.width = `${size}px`;
+    style.height = `${size}px`;
+    style.left = `${rect.left + this.centerScreen.x}px`;
+    style.top = `${rect.top + this.centerScreen.y}px`;
+    style.opacity = "1";
+  }
+
+  private hideDragRing() {
+    this.dragRing.style.opacity = "0";
   }
 
   private getArcballDirection(clientX: number, clientY: number) {
