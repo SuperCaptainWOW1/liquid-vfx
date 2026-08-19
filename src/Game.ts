@@ -6,6 +6,8 @@ import Bottle from "./Bottle";
 import Controls from "./Controls";
 import CameraController from "./CameraController";
 import World from "./World";
+import RaycastController from "./RaycastController";
+import GrabHighlighter from "./GrabHighlighter";
 
 export default class Game {
   constructor(canvas: HTMLCanvasElement, dragRing: HTMLElement) {
@@ -15,13 +17,18 @@ export default class Game {
 
     const { bottle } = new World(scene);
 
+    const raycastController = new RaycastController(canvas, camera, bottle);
+
     const controls = new Controls(
       canvas,
       camera,
       bottle,
       cameraControls,
+      raycastController,
       dragRing,
     );
+
+    new GrabHighlighter(canvas, raycastController, controls);
 
     this.initRenderLoop(
       renderer,

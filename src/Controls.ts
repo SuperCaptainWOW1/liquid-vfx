@@ -1,16 +1,9 @@
-import {
-  Quaternion,
-  Raycaster,
-  Vector2,
-  Vector3,
-  type PerspectiveCamera,
-} from "three";
+import { Quaternion, Vector2, Vector3, type PerspectiveCamera } from "three";
 import type { OrbitControls } from "three/examples/jsm/Addons.js";
 import type Bottle from "./Bottle";
+import type RaycastController from "./RaycastController";
 
 export default class Controls {
-  private raycaster = new Raycaster();
-
   private isPointerDown = false;
 
   private center = new Vector3();
@@ -29,6 +22,7 @@ export default class Controls {
     private camera: PerspectiveCamera,
     private bottle: Bottle,
     private cameraControls: OrbitControls,
+    private raycastController: RaycastController,
     private dragRing: HTMLElement,
   ) {
     canvas.addEventListener("pointerdown", (e) => this.onPointerDown(e));
@@ -41,12 +35,7 @@ export default class Controls {
   }
 
   private onPointerDown(e: PointerEvent) {
-    this.raycaster.setFromCamera(
-      this.getNormalizedDeviceCoordinates(e.clientX, e.clientY),
-      this.camera,
-    );
-    const hit = this.raycaster.intersectObject(this.bottle.liquidBody)[0];
-    if (!hit) return;
+    if (!this.raycastController.currentHit) return;
 
     this.bottle.liquidBody.getWorldPosition(this.center);
 
@@ -141,14 +130,6 @@ export default class Controls {
     return new Vector2(
       ((ndc.x + 1) / 2) * rect.width,
       ((1 - ndc.y) / 2) * rect.height,
-    );
-  }
-
-  private getNormalizedDeviceCoordinates(x: number, y: number) {
-    const rect = this.canvas.getBoundingClientRect();
-    return new Vector2(
-      ((x - rect.left) / rect.width) * 2 - 1,
-      -(((y - rect.top) / rect.height) * 2 - 1),
     );
   }
 }
