@@ -35,7 +35,7 @@ export default class Controls {
     canvas.addEventListener("pointermove", (e) => this.onPointerMove(e));
   }
 
-  public get isDragging() {
+  get isDragging() {
     return this.isPointerDown;
   }
 

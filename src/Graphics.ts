@@ -1,9 +1,9 @@
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 export default class Graphics {
-  public renderer;
-  public scene;
-  public camera;
+  renderer;
+  scene;
+  camera;
 
   constructor(canvas: HTMLCanvasElement) {
     const { renderer, scene, camera } = this.init(canvas);
