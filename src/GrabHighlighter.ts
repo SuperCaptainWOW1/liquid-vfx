@@ -11,7 +11,9 @@ export default class GrabHighlighter {
   }
 
   private onPointerMove() {
-    if (this.raycastController.currentHit || this.controls.isDragging) {
+    if (this.controls.isDragging) {
+      document.body.style.cursor = "grabbing";
+    } else if (this.raycastController.currentHit) {
       document.body.style.cursor = "grab";
     } else {
       document.body.style.cursor = "auto";
