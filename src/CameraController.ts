@@ -5,8 +5,12 @@ export default class CameraController {
   cameraControls;
 
   constructor(camera: PerspectiveCamera, canvas: HTMLCanvasElement) {
-    camera.position.z = 4;
+    this.setupInitialPosition(camera);
 
     this.cameraControls = new OrbitControls(camera, canvas);
+  }
+
+  private setupInitialPosition(camera: PerspectiveCamera) {
+    camera.position.z = 4;
   }
 }

@@ -5,10 +5,16 @@ export default class World {
   bottle;
 
   constructor(scene: Scene) {
-    this.bottle = new Bottle();
+    const { bottle } = this.init(scene);
 
-    scene.add(this.bottle.liquidBody);
-    scene.add(this.bottle.liquidSurface);
+    this.bottle = bottle;
+  }
+
+  private init(scene: Scene) {
+    const bottle = new Bottle();
+
+    scene.add(bottle.liquidBody);
+    scene.add(bottle.liquidSurface);
 
     const ground = new Mesh(
       new PlaneGeometry(100, 100).rotateX(-Math.PI / 2),
@@ -19,5 +25,9 @@ export default class World {
 
     ground.translateY(-1.7);
     scene.add(ground);
+
+    return {
+      bottle,
+    };
   }
 }

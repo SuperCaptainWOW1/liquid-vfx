@@ -19,11 +19,12 @@ import { clamp, damp } from "three/src/math/MathUtils.js";
 
 export default class Bottle {
   readonly maxLevel = 0.6;
-  targetLevel = this.maxLevel;
   readonly bottleWorldInverse;
 
   readonly liquidSurface;
   readonly liquidBody;
+
+  targetLevel = this.maxLevel;
 
   private static readonly WORLD_UP = new Vector3(0, 1, 0);
   private static readonly UPRIGHT = new Quaternion();
@@ -38,56 +39,20 @@ export default class Bottle {
   private angularVelocity = new Vector3();
   private reuseVector3 = new Vector3();
 
-  private levelValue = 0;
+  private levelValue = this.maxLevel;
   private levelVelocity = 0;
 
   private waveCoeff = new Vector2();
   private waveTarget = new Vector2();
 
   constructor() {
-    const liquidUniforms = {
-      uLevel: new Uniform(this.maxLevel),
-      uTime: new Uniform(0),
-      uVelocityCoeffX: new Uniform(0),
-      uVelocityCoeffZ: new Uniform(0),
-    };
+    const { liquidBody, liquidSurface, bottleWorldInverse } = this.init();
 
-    this.liquidBody = new Mesh(
-      new CylinderGeometry(
-        this.radius,
-        this.radius,
-        this.halfHeight * 2,
-        this.radialSegments,
-      ),
-      new ShaderMaterial({
-        vertexShader: liquidVertexShader,
-        fragmentShader: liquidFragmentShader,
-        uniforms: liquidUniforms,
-      }),
-    );
-    this.liquidBody.geometry.computeBoundingSphere();
+    this.liquidBody = liquidBody;
+    this.liquidSurface = liquidSurface;
+    this.bottleWorldInverse = bottleWorldInverse;
 
-    const surfaceGeometry = new PlaneGeometry(4, 4, 32, 32);
-    surfaceGeometry.rotateX(-Math.PI / 2);
-
-    this.bottleWorldInverse = new Uniform(new Matrix4());
-
-    this.liquidSurface = new Mesh(
-      surfaceGeometry,
-      new ShaderMaterial({
-        vertexShader: liquidSurfaceVertexShader,
-        fragmentShader: liquidSurfaceFragmentShader,
-        uniforms: {
-          ...liquidUniforms,
-          uBottleWorldInverse: this.bottleWorldInverse,
-          uRadius: new Uniform(this.radius),
-          uHalfHeight: new Uniform(this.halfHeight),
-        },
-        side: DoubleSide,
-      }),
-    );
-
-    this.prevQuaternion.copy(this.liquidBody.quaternion);
+    this.prevQuaternion.copy(liquidBody.quaternion);
     this.levelValue = this.maxLevel;
   }
 
@@ -110,6 +75,56 @@ export default class Bottle {
       Bottle.UPRIGHT,
       1 - Math.exp(-rate * delta),
     );
+  }
+
+  private init() {
+    const liquidUniforms = {
+      uLevel: new Uniform(this.maxLevel),
+      uTime: new Uniform(0),
+      uVelocityCoeffX: new Uniform(0),
+      uVelocityCoeffZ: new Uniform(0),
+    };
+
+    const liquidBody = new Mesh(
+      new CylinderGeometry(
+        this.radius,
+        this.radius,
+        this.halfHeight * 2,
+        this.radialSegments,
+      ),
+      new ShaderMaterial({
+        vertexShader: liquidVertexShader,
+        fragmentShader: liquidFragmentShader,
+        uniforms: liquidUniforms,
+      }),
+    );
+    liquidBody.geometry.computeBoundingSphere();
+
+    const surfaceGeometry = new PlaneGeometry(4, 4, 32, 32);
+    surfaceGeometry.rotateX(-Math.PI / 2);
+
+    const bottleWorldInverse = new Uniform(new Matrix4());
+
+    const liquidSurface = new Mesh(
+      surfaceGeometry,
+      new ShaderMaterial({
+        vertexShader: liquidSurfaceVertexShader,
+        fragmentShader: liquidSurfaceFragmentShader,
+        uniforms: {
+          ...liquidUniforms,
+          uBottleWorldInverse: bottleWorldInverse,
+          uRadius: new Uniform(this.radius),
+          uHalfHeight: new Uniform(this.halfHeight),
+        },
+        side: DoubleSide,
+      }),
+    );
+
+    return {
+      liquidBody,
+      bottleWorldInverse,
+      liquidSurface,
+    };
   }
 
   private updateTargetLevel() {
