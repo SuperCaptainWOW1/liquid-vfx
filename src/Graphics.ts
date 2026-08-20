@@ -20,6 +20,7 @@ export default class Graphics {
       antialias: true,
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const scene = new Scene();
 
@@ -29,6 +30,15 @@ export default class Graphics {
       0.1,
       30,
     );
+
+    window.addEventListener("resize", () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      this.camera.aspect = window.innerWidth / window.innerHeight;
+      this.camera.updateProjectionMatrix();
+      camera.updateProjectionMatrix();
+    });
 
     return {
       renderer,

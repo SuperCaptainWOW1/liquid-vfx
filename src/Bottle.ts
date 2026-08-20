@@ -32,7 +32,7 @@ export default class Bottle {
 
   private readonly radius = 0.5;
   private readonly halfHeight = 1.5;
-  private readonly radialSegments = 32;
+  private readonly radialSegments = 96;
 
   private prevQuaternion = new Quaternion();
   private deltaQuaternion = new Quaternion();
@@ -106,7 +106,7 @@ export default class Bottle {
       throw new Error("Failed to get bounding sphere");
     const dragRadius = liquidBody.geometry.boundingSphere.radius * 1.3;
 
-    const surfaceGeometry = new PlaneGeometry(4, 4, 32, 32);
+    const surfaceGeometry = new PlaneGeometry(3.2, 3.2, 192, 192);
     surfaceGeometry.rotateX(-Math.PI / 2);
 
     const bottleWorldInverse = new Uniform(new Matrix4());
