@@ -2,7 +2,7 @@ import { Mesh, MeshBasicMaterial, PlaneGeometry, type Scene } from "three";
 import Bottle from "./Bottle";
 
 export default class World {
-  bottle;
+  readonly bottle;
 
   constructor(scene: Scene) {
     const { bottle } = this.init(scene);
