@@ -30,6 +30,13 @@ export default class Bottle {
   private static readonly WORLD_UP = new Vector3(0, 1, 0);
   private static readonly UPRIGHT = new Quaternion();
 
+  // First sloshing mode: the surface tips like a pendulum instead of only rippling.
+  private static readonly GRAVITY = 9.81;
+  private static readonly SLOSH_FREQUENCY = 6;
+  private static readonly SLOSH_DAMPING = 0.2;
+  private static readonly ACCEL_SMOOTHING = 20;
+  private static readonly MAX_TILT_SLOPE = 0.7;
+
   private readonly radius = 0.5;
   private readonly halfHeight = 1.5;
   private readonly radialSegments = 96;
@@ -45,6 +52,16 @@ export default class Bottle {
 
   private waveCoeff = new Vector2();
   private waveTarget = new Vector2();
+
+  // Surface slope along world X and Z.
+  private tilt = new Vector2();
+  private tiltVelocity = new Vector2();
+  private tiltTarget = new Vector2();
+
+  private centroidOffset = new Vector3();
+  private centroidVelocity = new Vector3();
+  private prevCentroidVelocity = new Vector3();
+  private centroidAcceleration = new Vector3();
 
   constructor() {
     const { liquidBody, liquidSurface, bottleWorldInverse, dragRadius } =
@@ -64,6 +81,7 @@ export default class Bottle {
     this.updateTargetLevel();
     this.updateWaves(delta);
     this.updateLevel(delta);
+    this.updateTilt(delta);
 
     this.liquidBody.material.uniforms.uTime.value += delta * 5;
 
@@ -86,6 +104,7 @@ export default class Bottle {
       uTime: new Uniform(0),
       uVelocityCoeffX: new Uniform(0),
       uVelocityCoeffZ: new Uniform(0),
+      uTilt: new Uniform(this.tilt),
     };
 
     const liquidBody = new Mesh(
@@ -204,5 +223,61 @@ export default class Bottle {
 
     this.liquidBody.material.uniforms.uVelocityCoeffX.value = this.waveCoeff.x;
     this.liquidBody.material.uniforms.uVelocityCoeffZ.value = this.waveCoeff.y;
+  }
+
+  private updateTilt(delta: number) {
+    // Liquid centroid relative to the bottle pivot, in world space.
+    this.centroidOffset
+      .set(0, (this.levelValue - this.halfHeight) * 0.5, 0)
+      .applyQuaternion(this.liquidBody.quaternion);
+
+    // v = ω × r is exact, so acceleration needs only one finite difference.
+    this.centroidVelocity.crossVectors(
+      this.angularVelocity,
+      this.centroidOffset,
+    );
+
+    this.reuseVector3
+      .subVectors(this.centroidVelocity, this.prevCentroidVelocity)
+      .divideScalar(delta);
+
+    this.prevCentroidVelocity.copy(this.centroidVelocity);
+
+    this.centroidAcceleration.lerp(
+      this.reuseVector3,
+      1 - Math.exp(-Bottle.ACCEL_SMOOTHING * delta),
+    );
+
+    const maxSlope = Bottle.MAX_TILT_SLOPE;
+
+    // The surface sits normal to effective gravity g - a, so its slope is -a / g.
+    this.tiltTarget.set(
+      clamp(-this.centroidAcceleration.x / Bottle.GRAVITY, -maxSlope, maxSlope),
+      clamp(-this.centroidAcceleration.z / Bottle.GRAVITY, -maxSlope, maxSlope),
+    );
+
+    const stiffness = Bottle.SLOSH_FREQUENCY * Bottle.SLOSH_FREQUENCY;
+    const damping = 2 * Bottle.SLOSH_DAMPING * Bottle.SLOSH_FREQUENCY;
+
+    // Damped harmonic oscillator: overshoots the target and rings out.
+    this.tiltVelocity.x +=
+      ((this.tiltTarget.x - this.tilt.x) * stiffness -
+        this.tiltVelocity.x * damping) *
+      delta;
+    this.tiltVelocity.y +=
+      ((this.tiltTarget.y - this.tilt.y) * stiffness -
+        this.tiltVelocity.y * damping) *
+      delta;
+
+    this.tilt.x = clamp(
+      this.tilt.x + this.tiltVelocity.x * delta,
+      -maxSlope,
+      maxSlope,
+    );
+    this.tilt.y = clamp(
+      this.tilt.y + this.tiltVelocity.y * delta,
+      -maxSlope,
+      maxSlope,
+    );
   }
 }

@@ -1,24 +1,9 @@
-uniform float uTime;
-uniform float uVelocityCoeffX;
-uniform float uVelocityCoeffZ;
-uniform float uLevel;
+#include ../common/surface.glsl;
 
 in vec3 vWorldPosition;
 
-float waveHeight(vec2 xz, float time, float ampX, float ampZ) {
-  float amp = ampX + ampZ;
-  float h = 0.0;
-  h += sin(xz.x * 4.0 + time) * ampX;
-  h += sin(xz.y * 5.0 + time * 0.7) * ampZ;
-  h += sin((xz.x + xz.y) * 2.3 + time * 1.3) * amp * 0.25;
-  h += sin((xz.x - xz.y) * 3.1 - time * 0.9) * amp * 0.15;
-  return h;
-}
-
 void main() {
-  float surface =
-    uLevel +
-    waveHeight(vWorldPosition.xz, uTime, uVelocityCoeffX, uVelocityCoeffZ);
+  float surface = surfaceHeight(vWorldPosition.xz);
 
   if (vWorldPosition.y > surface) discard;
 
@@ -34,5 +19,4 @@ void main() {
   vec3 color = mix(shallowColor, deepColor, depth);
 
   gl_FragColor = vec4(color, 1.0);
-  // gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
 }
